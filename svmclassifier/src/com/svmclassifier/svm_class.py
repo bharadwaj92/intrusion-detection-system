@@ -145,7 +145,8 @@ class Training():
         final_data_structure = self.create_data_format(data_frame)        
         return final_data_structure
     
-    # creates a model for training ; driver program
+    #input : driver program for training which takes user name as input
+    # output : prints out the metrics of the training with bad blocks details
     def training_model(self, training_user):
         training_file = os.path.join(self.PATH,training_user) 
         final_data_structure = self.create_nparray(training_file)
@@ -153,14 +154,16 @@ class Training():
         dump(model_svm,open('model.svm', 'wb'))     
         metrics_structure = self.model_metrics(model_svm, final_data_structure)
     
-    #model_testing(self.testing_file_name)
+    #input : driver program for testing which takes user name as input
+    # output : prints out the metrics with bad block details
     def model_testing(self, testing_user):
         load(open('database.dict','rb'))
         testing_file = os.path.join(self.PATH, testing_user)
         testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
         testing_metrics_structure= self.model_metrics( trained_model, testing_data_structure)
-            
+
+# creating object of training class and calling functions
 trn =  Training()
 trn.training_model('test_user')
 trn.model_testing('test_user')    
