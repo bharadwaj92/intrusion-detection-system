@@ -156,8 +156,8 @@ class Training():
     #model_testing(self.testing_file_name)
     def model_testing(self, testing_user):
         load(open('database.dict','rb'))
-        testing_file = os.path.join(self.PATH,testing_user)
-        testing_data_structure = self.create_nparray(self.testing_file)
+        testing_file = os.path.join(self.PATH, testing_user)
+        testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
         testing_metrics_structure= self.model_metrics( trained_model, testing_data_structure)
             
