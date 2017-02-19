@@ -171,5 +171,5 @@ class Training():
 
 # creating object of training class and calling functions
 trn =  Training()
-#trn.training_model('test_user')
+trn.training_model('test_user')
 trn.model_testing('test_user')    
