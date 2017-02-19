@@ -100,7 +100,7 @@ class Training():
                 for small_block in df_list:
                     for item in small_block:
                         all_data_frames = all_data_frames.append(item, ignore_index = True)
-        clf = svm.OneClassSVM(self.nu, self.kernel , self.gamma)
+        clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel , gamma = self.gamma)
         model_svm = clf.fit(all_data_frames)
         #print(model_svm)
         return model_svm        
