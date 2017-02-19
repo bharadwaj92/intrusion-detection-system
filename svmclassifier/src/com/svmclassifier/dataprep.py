@@ -3,9 +3,17 @@ import pandas as pd
 import io
 import glob
 from sklearn import svm
+from pickle import dump
+from pickle import load
+# Global parameters of the model and the database structure
 database = {}
 PATH = r'C:\Users\bharadwaj\Desktop\masquerade-data'
-
+threshold = 2
+word_count_size = 10
+block_size = 100
+sub_block_size = 50
+num_sub_blocks = 6
+testing_file_name = 'User1'
 # input : all user files 
 # output : dictionary of {'word' , id} used for look up purposes
 def create_database():  
@@ -25,9 +33,6 @@ def create_database():
 # output: blcoks of size 100 and sub-blocks of size 50.
 def create_blocks(data_frame): 
     dict_dataframes = {}
-    block_size = 100
-    sub_block_size = 50
-    num_sub_blocks = 6
     len_df = len(data_frame.axes[0])
     #print(len_df)
     for i in range(0,len_df, block_size):
@@ -43,7 +48,6 @@ def create_blocks(data_frame):
 # if 'id' is not there in the 10 window span, it has count 0 , else the count is populated by window aggregation.        
 def create_training_dataframe(sub_list_df):
     word_df_for_sub_list = []
-    word_count_size = 10
     len_df = len(sub_list_df.axes[0])
     for i in range(0, len_df , word_count_size):
         word_count_dict = dict(database)
@@ -88,10 +92,33 @@ def create_model_svm(final_data_structure):
     clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
     model_svm = clf.fit(all_data_frames)
     #print(model_svm)
-    y_pred_train = clf.predict(all_data_frames)
-    print(y_pred_train)
     return model_svm        
-def model_metrics():
+
+# input : final metrics strucutre 
+# output: prints the block id, sub block id and the indexes at which bad blocks are found 
+def calculate_statistics(metrics_structure):
+    for block_id , sub_block_id in metrics_structure.items():
+        for sub_block_id , result_list in metrics_structure[block_id].items():
+            num_bad_blocks = result_list.count(-1)
+            #print(result_list, num_bad_blocks)
+            if(num_bad_blocks > threshold):
+                #print("bad block found at block_id",  block_id, "sub block", sub_block_id," and index", [i for i, x in enumerate(result_list) if x == -1], "and the number of bad min blocks is" ,num_bad_blocks )        
+                print("bad block of rows", (block_id*block_size +block_id*block_size+block_size) ,"sub block range",(block_id*block_size+sub_block_id*word_count_size,block_id*block_size+sub_block_id*word_count_size +sub_block_size)  )
+
+# input : model and the data structure
+# output : Prints the model metrics on console  
+def model_metrics(model_svm, final_data_structure):
+    metrics_structure = defaultdict(dict)
+    for block_id , sub_block_id in final_data_structure.items():
+        for sub_block_id , df_list in final_data_structure[block_id].items():
+            tens_array = []
+            for small_block in df_list:
+                for item in small_block:
+                    tens_array.append(int(model_svm.predict(item)))
+            #print(block_id, sub_block_id)
+            metrics_structure[block_id][sub_block_id] = tens_array  
+    calculate_statistics(metrics_structure)              
+    return dict(metrics_structure)                
     
 # input : user file 
 # output : dataframe of wordlists and counts with 1    
@@ -107,8 +134,21 @@ def create_nparray(file_name):
     final_data_structure = create_data_format(data_frame)        
     return final_data_structure
 
-create_database()
-final_data_structure = create_nparray('User1')
-model_svm = create_model_svm(final_data_structure)       
-model_metrics(model_svm)     
-    
+def model_testing(testing_file_name):
+    load(open('database.dict','rb'))
+    testing_data_structure = create_nparray(testing_file_name)
+    trained_model = load(open('model.svm', 'rb'))
+    testing_metrics_structure= model_metrics( trained_model, testing_data_structure)
+
+def training_model():
+    create_database()
+    final_data_structure = create_nparray('User1')
+    dump(database, open('database.dict','wb'))
+    model_svm = create_model_svm(final_data_structure)  
+    dump(model_svm,open('model.svm', 'wb'))     
+    metrics_structure = model_metrics(model_svm, final_data_structure)
+
+#model_testing(testing_file_name)
+if __name__ == "__main__":
+    training_model()
+            
