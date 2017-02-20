@@ -37,7 +37,6 @@ class Training():
                     else:
                         continue
         dump(database, open('database.dict','wb'))
-        #print(database)
         return database 
     
     # input : entire file as dataframe
@@ -45,7 +44,6 @@ class Training():
     def create_blocks(self,data_frame): 
         dict_dataframes = {}
         len_df = len(data_frame.axes[0])
-        #print(len_df)
         for i in range(0,len_df, self.block_size):
             sub_blocks = []
             temp_df = data_frame[i:i+self.block_size]
@@ -68,10 +66,7 @@ class Training():
             id_columns = sorted(id_columns)
             df = pd.DataFrame(columns= id_columns , index = [1])
             df.ix[1] = 0
-            #print(df)
             for ir in temp_df1.itertuples():
-                #print(ir[0] , ir[1])
-                #print(df.ix[1])
                 df.ix[1][ir[0]] = ir[1]
             word_df_for_sub_list.append(df)
         return word_df_for_sub_list           
@@ -85,7 +80,6 @@ class Training():
             sub_lists = dict_blocks[block_number]
             for sub_list_number in range(len(sub_lists)):
                 final_array_dataframes = self.create_training_dataframe(sub_lists[sub_list_number])
-                #print(type(final_array_dataframes[0]))
                 final_data_structure[block_number][sub_list_number] = [final_array_dataframes] 
         return dict(final_data_structure)
     
@@ -102,7 +96,6 @@ class Training():
                         all_data_frames = all_data_frames.append(item, ignore_index = True)
         clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel ,gamma = self.gamma)
         model_svm = clf.fit(all_data_frames)
-        #print(model_svm)
         return model_svm        
     
     # input : final metrics strucutre 
@@ -113,7 +106,6 @@ class Training():
         for block_id , sub_block_id in metrics_structure.items():
             for sub_block_id , result_list in metrics_structure[block_id].items():
                 num_bad_blocks = result_list.count(-1)
-                #print(result_list, num_bad_blocks)
                 if(num_bad_blocks > self.threshold):
                     #print("bad block found at block_id",  block_id, "sub block", sub_block_id," and index", [i for i, x in enumerate(result_list) if x == -1], "and the number of bad min blocks is" ,num_bad_blocks )        
                     print("bad block of rows",(block_id , block_id+self.block_size) ,"sub block range",(block_id + sub_block_id*self.word_count_size,block_id +sub_block_id*self.word_count_size +self.sub_block_size)  )
@@ -121,6 +113,7 @@ class Training():
         print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
         misclassificaiton_rate = total_bad_blocks / total_blocks_passed
         print("misclassification rate is ", misclassificaiton_rate*100)                
+    
     # input : model and the data structure
     # output : Prints the model metrics on console  
     def model_metrics(self,model_svm, final_data_structure):
@@ -131,7 +124,6 @@ class Training():
                 for small_block in df_list:
                     for item in small_block:
                         tens_array.append(int(model_svm.predict(item)))
-                #print(block_id, sub_block_id)
                 metrics_structure[block_id][sub_block_id] = tens_array  
         self.calculate_statistics(metrics_structure)              
         return dict(metrics_structure)                
@@ -167,7 +159,6 @@ class Training():
         testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
         testing_metrics_structure= self.model_metrics( trained_model, testing_data_structure)
-        #print(testing_metrics_structure)
 
 # creating object of training class and calling functions
 trn =  Training()
