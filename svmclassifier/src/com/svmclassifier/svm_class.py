@@ -1,3 +1,4 @@
+import csv
 from collections import defaultdict
 import pandas as pd
 import io
@@ -120,13 +121,15 @@ class Training():
     
     # input : model and the data structure
     # output : Prints the model metrics on console  
-    def model_metrics(self,model_svm, final_data_structure):
+    def model_metrics(self, x , model_svm, final_data_structure):
         metrics_structure = defaultdict(dict)
         for block_id , sub_block_id in final_data_structure.items():
             for sub_block_id , df_list in final_data_structure[block_id].items():
                 tens_array = []
                 for small_block in df_list:
                     for item in small_block:
+                        with open(os.path.join(x + '_df' + '.csv'), 'a') as f:
+                            item.to_csv(f, header=False)
                         tens_array.append(int(model_svm.predict(item)))
                 metrics_structure[block_id][sub_block_id] = tens_array  
         self.calculate_statistics(metrics_structure)              
@@ -153,7 +156,7 @@ class Training():
         final_data_structure = self.create_nparray(training_file)
         model_svm = self.create_model_svm(final_data_structure)  
         dump(model_svm,open('model.svm', 'wb'))     
-        metrics_structure = self.model_metrics(model_svm, final_data_structure)
+        metrics_structure = self.model_metrics('training',model_svm, final_data_structure)
     
     #input : driver program for testing which takes user name as input
     # output : prints out the metrics with bad block details
@@ -162,9 +165,9 @@ class Training():
         testing_file = os.path.join(self.PATH, testing_user)
         testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
-        testing_metrics_structure= self.model_metrics( trained_model, testing_data_structure)
+        testing_metrics_structure= self.model_metrics('testing', trained_model, testing_data_structure)
 
 # creating object of training class and calling functions
 trn =  Training()
-trn.training_model('train_2')
+#trn.training_model('train_2')
 trn.model_testing('test2_user') 
