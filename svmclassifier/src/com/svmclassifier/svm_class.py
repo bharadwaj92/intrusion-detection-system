@@ -39,6 +39,9 @@ class Training():
                     else:
                         continue
         dump(database, open('database.dict','wb'))
+        with open('dictionary.csv',  'w', newline='') as f:  # Just use 'w' mode in 3.x
+            w = csv.writer(f)
+            w.writerows(database.items())
         return database 
     
     # input : entire file as dataframe
