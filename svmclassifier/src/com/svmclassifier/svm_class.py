@@ -12,7 +12,8 @@ class Training():
     # constructor that initializes the parameters
     def __init__(self ):
         self.PATH = r'C:\Users\bharadwaj\Desktop\masquerade-data'
-        self.threshold = 2
+        self.threshold = 4
+        self.row_threshold = 2
         self.word_count_size = 10
         self.block_size = 100
         self.sub_block_size = 50
@@ -104,15 +105,18 @@ class Training():
         total_bad_blocks = 0
         total_blocks_passed = len(metrics_structure)*self.num_sub_blocks
         for block_id , sub_block_id in metrics_structure.items():
+            bad_block_count = 0
             for sub_block_id , result_list in metrics_structure[block_id].items():
-                num_bad_blocks = result_list.count(-1)
-                if(num_bad_blocks > self.threshold):
-                    #print("bad block found at block_id",  block_id, "sub block", sub_block_id," and index", [i for i, x in enumerate(result_list) if x == -1], "and the number of bad min blocks is" ,num_bad_blocks )        
-                    print("bad block of rows",(block_id , block_id+self.block_size) ,"sub block range",(block_id + sub_block_id*self.word_count_size,block_id +sub_block_id*self.word_count_size +self.sub_block_size)  )
-                    total_bad_blocks +=1
+                num_bad_rows = result_list.count(-1)
+                if(num_bad_rows > self.row_threshold):
+                    #print(result_list)
+                    bad_block_count += 1
+            if(bad_block_count > self.threshold):
+                print("bad block of rows",(block_id , block_id+self.block_size))
+                total_bad_blocks +=1
         print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
         misclassificaiton_rate = total_bad_blocks / total_blocks_passed
-        print("misclassification rate is ", misclassificaiton_rate*100)                
+        print("abnormality rate is ", misclassificaiton_rate*100)                
     
     # input : model and the data structure
     # output : Prints the model metrics on console  
@@ -162,5 +166,5 @@ class Training():
 
 # creating object of training class and calling functions
 trn =  Training()
-trn.training_model('test_user')
-trn.model_testing('test_user')    
+trn.training_model('train_2')
+trn.model_testing('test2_user') 
