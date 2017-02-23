@@ -132,7 +132,7 @@ class Training():
                 for small_block in df_list:
                     for item in small_block:
                         with open(os.path.join(x + '_df' + '.csv'), 'a') as f:
-                            item.to_csv(f, header=False)
+                            item.to_csv(f, header=False,index=False)
                         tens_array.append(int(model_svm.predict(item)))
                 metrics_structure[block_id][sub_block_id] = tens_array  
         self.calculate_statistics(metrics_structure)              
