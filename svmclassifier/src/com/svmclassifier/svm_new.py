@@ -22,7 +22,7 @@ class Training():
         self.sub_block_size = 50
         self.num_sub_blocks = 6
         self.nu = 0.001
-        self.kernel = "linear"
+        self.kernel = "rbf"
         self.gamma = 0.0001
         self.database = self.create_database()
     
@@ -120,7 +120,7 @@ class Training():
         #print(actual_df.ix[60:63])
         for row in range(len(actual_df)):
             if(actual_df.ix[row] - predict_output_df.ix[row] >0 ).any():
-                print("flase positive block found at block", row*100)
+                print("flase positive block found at block", (row+1)*100)
                 fpcount += 1 
         print("false postive rate = ", fpcount/len(actual_df) )
         
@@ -193,5 +193,5 @@ class Training():
 
 # creating object of training class and calling functions
 trn =  Training()
-trn.training_model('train_2')
-trn.model_testing('test2_user', 2)
+trn.training_model('user43_train')
+trn.model_testing('user43_test', 43)
