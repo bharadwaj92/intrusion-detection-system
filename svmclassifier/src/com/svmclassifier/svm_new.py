@@ -1,5 +1,6 @@
 import csv
 import pandas as pd
+from collections import OrderedDict
 import numpy as np
 import io
 import glob
@@ -8,6 +9,8 @@ from sklearn import svm
 from sklearn.grid_search import GridSearchCV
 from pickle import dump
 from pickle import load
+from _operator import sub
+from numpy import logical_and
 
 class Training():
     
@@ -110,20 +113,36 @@ class Training():
         model_svm = clf.fit(all_data_frames)
         return model_svm        
     
+    def calculate_fprate(self,predict_output_df , user_no):
+        fpcount = 0
+        temp = pd.DataFrame()
+        outputdf = pd.read_csv('actual_output.csv')
+        actual_df = outputdf.ix[:,user_no-1]
+        #print(actual_df.ix[60:63])
+        for row in range(len(actual_df)):
+            if(actual_df.ix[row] - predict_output_df.ix[row] >0 ).any():
+                print(row)
+                fpcount += 1 
+        print("false postive rate = ", len(temp)/len(actual_df) )
+        
     # input : final metrics strucutre 
     # output: prints the block id, sub block id and the indexes at which bad blocks are found 
     def calculate_statistics(self,metrics_structure):
+        metrics_structure = dict(OrderedDict(sorted(metrics_structure.items())))
+        predict_output_df =  pd.DataFrame([0]*100, columns = ['result'])
         total_bad_blocks = 0
         total_blocks_passed = len(metrics_structure)*self.num_sub_blocks
         for block_id , result_list in metrics_structure.items():
             num_bad_rows = result_list.count(-1)
             if(num_bad_rows > self.threshold):
-                print(result_list)
                 total_bad_blocks += 1
+                predict_output_df.ix[block_id/100 ] = 1
                 print("bad block of rows",(block_id, block_id+100))
-        print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
+        #print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
         misclassificaiton_rate = total_bad_blocks / total_blocks_passed
         print("abnormality rate is ", misclassificaiton_rate*100)                
+        #print(predict_output_df.ix[60:63] )
+        return predict_output_df
     
     # input : model and the data structure
     # output : Prints the model metrics on console  
@@ -136,8 +155,8 @@ class Training():
                         block.to_csv(f, header=False)
                         fifty_array.append(int(model_svm.predict(block)))
                 metrics_structure[block_id] = fifty_array  
-        self.calculate_statistics(metrics_structure)              
-        return dict(metrics_structure)    
+        predict_output_df = self.calculate_statistics(metrics_structure)              
+        return dict(metrics_structure) , predict_output_df    
                 
     # input : user file 
     # output : dataframe of wordlists and counts with 1    
@@ -160,18 +179,20 @@ class Training():
         final_data_structure = self.create_nparray(training_file)
         model_svm = self.create_model_svm(final_data_structure)  
         dump(model_svm,open('model.svm', 'wb'))   
-        metrics_structure = self.model_metrics('training',model_svm, final_data_structure)
+        metrics_structure ,predict_output_df = self.model_metrics('training',model_svm, final_data_structure)
     
     #input : driver program for testing which takes user name as input
     # output : prints out the metrics with bad block details
-    def model_testing(self, testing_user):
+    def model_testing(self, testing_user, user_no):
         load(open('database.dict','rb'))
         testing_file = os.path.join(self.PATH, testing_user)
         testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
-        testing_metrics_structure = self.model_metrics('testing', trained_model, testing_data_structure)
+        testing_metrics_structure ,predict_output_df = self.model_metrics('testing', trained_model, testing_data_structure)
+        self.calculate_fprate( predict_output_df, user_no)
+        
 
 # creating object of training class and calling functions
 trn =  Training()
 trn.training_model('train_2')
-trn.model_testing('test2_user')
+trn.model_testing('test2_user', 2)
