@@ -115,15 +115,14 @@ class Training():
     
     def calculate_fprate(self,predict_output_df , user_no):
         fpcount = 0
-        temp = pd.DataFrame()
         outputdf = pd.read_csv('actual_output.csv')
         actual_df = outputdf.ix[:,user_no-1]
         #print(actual_df.ix[60:63])
         for row in range(len(actual_df)):
             if(actual_df.ix[row] - predict_output_df.ix[row] >0 ).any():
-                print(row)
+                print("flase positive block found at block", row*100)
                 fpcount += 1 
-        print("false postive rate = ", len(temp)/len(actual_df) )
+        print("false postive rate = ", fpcount/len(actual_df) )
         
     # input : final metrics strucutre 
     # output: prints the block id, sub block id and the indexes at which bad blocks are found 
@@ -138,7 +137,7 @@ class Training():
                 total_bad_blocks += 1
                 predict_output_df.ix[block_id/100 ] = 1
                 print("bad block of rows",(block_id, block_id+100))
-        #print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
+        print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
         misclassificaiton_rate = total_bad_blocks / total_blocks_passed
         print("abnormality rate is ", misclassificaiton_rate*100)                
         #print(predict_output_df.ix[60:63] )
