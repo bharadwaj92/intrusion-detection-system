@@ -1,7 +1,6 @@
 import csv
 import pandas as pd
 from collections import OrderedDict
-import numpy as np
 import io
 import glob
 import os
@@ -10,7 +9,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import confusion_matrix
 from pickle import dump
 from pickle import load
-from sqlalchemy.sql.expression import false
+import matplotlib.pyplot as plt
 
 class Training():
     
@@ -126,7 +125,12 @@ class Training():
         print("accuracy rate is", accuracy_rate)
         print("misses rate is ", misses)
         print("false alarm rate is", false_alarm)
-         
+        plotframe = pd.concat([actual_df, predict_output_df], axis = 1)
+        plotframe.columns = ['actual value','predicted value']
+        plotframe.plot(kind = 'line')
+        filename = os.path.join('plot_' + str(user_no) + '.png')
+        plt.savefig(filename)
+     
     # input : final metrics strucutre 
     # output: prints the block id, sub block id and the indexes at which bad blocks are found 
     def calculate_statistics(self,metrics_structure):
@@ -148,12 +152,12 @@ class Training():
     
     # input : model and the data structure
     # output : Prints the model metrics on console  
-    def model_metrics(self, x , model_svm, final_data_structure):
+    def model_metrics(self, type, user_no , model_svm, final_data_structure):
         metrics_structure = {}
         for block_id , df_list in final_data_structure.items():
                 fifty_array = []
                 for block in df_list:
-                    with open(os.path.join(x + '_df' + '.csv'), 'a') as f:
+                    with open(os.path.join(type + '_df' + str(user_no) + '.csv'), 'a') as f:
                         block.to_csv(f, header=False)
                         fifty_array.append(int(model_svm.predict(block)))
                 metrics_structure[block_id] = fifty_array  
@@ -179,9 +183,10 @@ class Training():
     def training_model(self, training_user, user_no):
         training_file = os.path.join(self.PATH,training_user) 
         final_data_structure = self.create_nparray(training_file)
-        model_svm = self.create_model_svm(final_data_structure)  
-        dump(model_svm,open('model.svm', 'wb'))   
-        metrics_structure ,predict_output_df = self.model_metrics('training',model_svm, final_data_structure)
+        model_svm = self.create_model_svm(final_data_structure) 
+        model_file = os.path.join('model_'+ str(user_no)+ '.svm') 
+        dump(model_svm,open(model_file, 'wb'))   
+        metrics_structure ,predict_output_df = self.model_metrics('training', user_no ,model_svm, final_data_structure)
     #input : driver program for testing which takes user name as input
     # output : prints out the metrics with bad block details
     
@@ -189,12 +194,13 @@ class Training():
         load(open('database.dict','rb'))
         testing_file = os.path.join(self.PATH, testing_user)
         testing_data_structure = self.create_nparray(testing_file)
-        trained_model = load(open('model.svm', 'rb'))
-        testing_metrics_structure ,predict_output_df = self.model_metrics('testing', trained_model, testing_data_structure)
+        model_file = os.path.join('model_'+ str(user_no)+ '.svm')
+        trained_model = load(open(model_file, 'rb'))
+        testing_metrics_structure ,predict_output_df = self.model_metrics('testing', user_no , trained_model, testing_data_structure)
         self.calculate_testing_metrics( predict_output_df, user_no)
         
 
 # creating object of training class and calling functions
 trn =  Training()
-#trn.training_model('user43_train', 43)
+trn.training_model('user43_train', 43)
 trn.model_testing('user43_test', 43)
