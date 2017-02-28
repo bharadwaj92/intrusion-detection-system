@@ -7,10 +7,10 @@ import glob
 import os
 from sklearn import svm
 from sklearn.grid_search import GridSearchCV
+from sklearn.metrics import confusion_matrix
 from pickle import dump
 from pickle import load
-from _operator import sub
-from numpy import logical_and
+from sqlalchemy.sql.expression import false
 
 class Training():
     
@@ -113,22 +113,25 @@ class Training():
         model_svm = clf.fit(all_data_frames)
         return model_svm        
     
-    def calculate_fprate(self,predict_output_df , user_no):
-        fpcount = 0
+    def calculate_testing_metrics(self,predict_output_df , user_no):
+        predict_output_df.to_csv('predicted_output.csv')
         outputdf = pd.read_csv('actual_output.csv')
         actual_df = outputdf.ix[:,user_no-1]
-        #print(actual_df.ix[60:63])
-        for row in range(len(actual_df)):
-            if(actual_df.ix[row] - predict_output_df.ix[row] >0 ).any():
-                print("flase positive block found at block", (row+1)*100)
-                fpcount += 1 
-        print("false postive rate = ", fpcount/len(actual_df) )
-        
+        actual_df.to_csv('actual-output.csv')
+        tn, fp, fn, tp = confusion_matrix(actual_df, predict_output_df).ravel()
+        print(tn,fp,fn,tp)
+        accuracy_rate = (tn + tp)/(tn+tp+fn+fp)
+        misses = (fn+fp)/(tn+tp+fn+fp)
+        false_alarm = fp / (fp+ tp)
+        print("accuracy rate is", accuracy_rate)
+        print("misses rate is ", misses)
+        print("false alarm rate is", false_alarm)
+         
     # input : final metrics strucutre 
     # output: prints the block id, sub block id and the indexes at which bad blocks are found 
     def calculate_statistics(self,metrics_structure):
         metrics_structure = dict(OrderedDict(sorted(metrics_structure.items())))
-        predict_output_df =  pd.DataFrame([0]*100, columns = ['result'])
+        predict_output_df =  pd.DataFrame([0]*100)
         total_bad_blocks = 0
         total_blocks_passed = len(metrics_structure)*self.num_sub_blocks
         for block_id , result_list in metrics_structure.items():
@@ -173,25 +176,25 @@ class Training():
     
     #input : driver program for training which takes user name as input
     # output : prints out the metrics of the training with bad blocks details
-    def training_model(self, training_user):
+    def training_model(self, training_user, user_no):
         training_file = os.path.join(self.PATH,training_user) 
         final_data_structure = self.create_nparray(training_file)
         model_svm = self.create_model_svm(final_data_structure)  
         dump(model_svm,open('model.svm', 'wb'))   
         metrics_structure ,predict_output_df = self.model_metrics('training',model_svm, final_data_structure)
-    
     #input : driver program for testing which takes user name as input
     # output : prints out the metrics with bad block details
+    
     def model_testing(self, testing_user, user_no):
         load(open('database.dict','rb'))
         testing_file = os.path.join(self.PATH, testing_user)
         testing_data_structure = self.create_nparray(testing_file)
         trained_model = load(open('model.svm', 'rb'))
         testing_metrics_structure ,predict_output_df = self.model_metrics('testing', trained_model, testing_data_structure)
-        self.calculate_fprate( predict_output_df, user_no)
+        self.calculate_testing_metrics( predict_output_df, user_no)
         
 
 # creating object of training class and calling functions
 trn =  Training()
-trn.training_model('user43_train')
+#trn.training_model('user43_train', 43)
 trn.model_testing('user43_test', 43)
