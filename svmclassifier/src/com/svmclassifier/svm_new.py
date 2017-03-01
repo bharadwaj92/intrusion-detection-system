@@ -1,12 +1,15 @@
 import csv
 import pandas as pd
+import numpy as np
 from collections import OrderedDict
 import io
 import glob
 import os
 from sklearn import svm
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import make_scorer
 from pickle import dump
 from pickle import load
 import matplotlib.pyplot as plt
@@ -20,7 +23,7 @@ class Training():
         self.block_size = 100
         self.sub_block_size = 50
         self.num_sub_blocks = 6
-        self.nu = 0.001
+        self.nu = 0.0085
         self.kernel = "rbf"
         self.gamma = 0.0001
         self.database = self.create_database()
@@ -88,34 +91,27 @@ class Training():
             final_data_structure[block_number] = sublist_dfs
         return final_data_structure
     
-    # input : final data structure
-    # output : model of SVM with tuning code included using grid search cross validating the accuracy
-    def create_model_svm(self,final_data_structure):
-        id_columns = list(self.database.values())
-        id_columns = sorted(id_columns)
-        all_data_frames = pd.DataFrame(columns= id_columns)
-        for block_id , sub_block_list in final_data_structure.items():
-            #print(sub_block_list)
-            for df in sub_block_list:
-                all_data_frames = all_data_frames.append(df, ignore_index = True)
-        
-        #*************** code for tuning the SVM using grid search***********        
-        #clf = svm.OneClassSVM()
-        #parameters = {'kernel': ['linear', 'rbf'], 'nu': np.arange(0.0001,0.01, 0.0002),'gamma': np.arange(0.0001,0.01, 0.0002)}
-        #print(model_svm)
-        #grid = GridSearchCV(clf, parameters, scoring = 'accuracy')
-        #model_svm2 = grid.fit(all_data_frames , pd.DataFrame([1]*len(all_data_frames)))
-        #self.kernel = model_svm2.best_params_['kernel']
-        #self.gamma = model_svm2.best_params_['gamma']
-        #self.nu = model_svm2.best_params_['nu']
-        clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel ,gamma = self.gamma )
-        model_svm = clf.fit(all_data_frames)
-        return model_svm        
+    ## custom scorer created for developing corss validation strategy on reducing the false alarm rate on training dataset
+    ## input : predicted output and actual output
+    ## returns the false alarm rate or 0 if none
+    def scorer(self,predict_output_df,actual_df):
+        try:
+            tn, fp, fn, tp = confusion_matrix(actual_df, predict_output_df).ravel()
+            false_alarm = fp / (fp+ tp)
+            print("leaving scoring function from try part")
+            return false_alarm
+            
+        except ValueError:
+            print("leaving scoring function from exception part")
+            return 0
     
+    ## function used to calculate the metrics required and print the result on screen. Also generates a graph 
+    # input : predicted output and user no 
+    # output : prints the metrics on console and saves graph in the source code folder 
     def calculate_testing_metrics(self,predict_output_df , user_no):
         predict_output_df.to_csv('predicted_output.csv')
         outputdf = pd.read_csv('actual_output.csv')
-        actual_df = outputdf.ix[:,user_no-1]
+        actual_df = outputdf.filter([str(user_no)], axis = 1)
         actual_df.to_csv('actual-output.csv')
         tn, fp, fn, tp = confusion_matrix(actual_df, predict_output_df).ravel()
         print(tn,fp,fn,tp)
@@ -130,6 +126,35 @@ class Training():
         plotframe.plot(kind = 'line')
         filename = os.path.join('plot_' + str(user_no) + '.png')
         plt.savefig(filename)
+        return false_alarm
+    
+    ## Function to build the model along with grid search for tuning hyper parameters with cross validation on false alarm rate
+    # input : final data structure
+    # output : returns SVM model
+    def create_model_svm(self,final_data_structure):
+        id_columns = list(self.database.values())
+        id_columns = sorted(id_columns)
+        all_data_frames = pd.DataFrame(columns= id_columns)
+        for block_id , sub_block_list in final_data_structure.items():
+            #print(sub_block_list)
+            for df in sub_block_list:
+                all_data_frames = all_data_frames.append(df, ignore_index = True)
+        
+        #*************** code for tuning the SVM using grid search***********
+        loss  = make_scorer(self.scorer, greater_is_better=False)
+        #print(get_scorer(loss))   
+        actual_df= pd.DataFrame([1]*300)     
+        clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel ,gamma = self.gamma )
+        parameters = {'nu': np.arange(0.0001,0.01, 0.0002),'gamma': np.arange(0.0001,0.01, 0.0002)}
+        print("building the model")
+        grid = GridSearchCV(clf, parameters, cv = 4, scoring = loss)
+        model_svm2 = grid.fit(all_data_frames , actual_df)
+        print("completed building the model")
+        model_svm3 = model_svm2.best_estimator_
+        print(model_svm2.best_params_)
+        #clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel ,gamma = self.gamma )
+        #model_svm = clf.fit(all_data_frames)
+        return model_svm3      
      
     # input : final metrics strucutre 
     # output: prints the block id, sub block id and the indexes at which bad blocks are found 
@@ -137,7 +162,7 @@ class Training():
         metrics_structure = dict(OrderedDict(sorted(metrics_structure.items())))
         predict_output_df =  pd.DataFrame([0]*100)
         total_bad_blocks = 0
-        total_blocks_passed = len(metrics_structure)*self.num_sub_blocks
+        total_blocks_passed = len(metrics_structure)
         for block_id , result_list in metrics_structure.items():
             num_bad_rows = result_list.count(-1)
             if(num_bad_rows > self.threshold):
@@ -145,8 +170,8 @@ class Training():
                 predict_output_df.ix[block_id/100 ] = 1
                 print("bad block of rows",(block_id, block_id+100))
         print("total number of blocks passed",total_blocks_passed, "total number of bad blocks", total_bad_blocks)
-        misclassificaiton_rate = total_bad_blocks / total_blocks_passed
-        print("abnormality rate is ", misclassificaiton_rate*100)                
+        abnormality_rate = (total_bad_blocks / total_blocks_passed)*100
+        print("abnormality rate is ", abnormality_rate)                
         #print(predict_output_df.ix[60:63] )
         return predict_output_df
     
@@ -187,9 +212,9 @@ class Training():
         model_file = os.path.join('model_'+ str(user_no)+ '.svm') 
         dump(model_svm,open(model_file, 'wb'))   
         metrics_structure ,predict_output_df = self.model_metrics('training', user_no ,model_svm, final_data_structure)
+    
     #input : driver program for testing which takes user name as input
     # output : prints out the metrics with bad block details
-    
     def model_testing(self, testing_user, user_no):
         load(open('database.dict','rb'))
         testing_file = os.path.join(self.PATH, testing_user)
@@ -197,10 +222,10 @@ class Training():
         model_file = os.path.join('model_'+ str(user_no)+ '.svm')
         trained_model = load(open(model_file, 'rb'))
         testing_metrics_structure ,predict_output_df = self.model_metrics('testing', user_no , trained_model, testing_data_structure)
-        self.calculate_testing_metrics( predict_output_df, user_no)
+        self.calculate_testing_metrics(predict_output_df, user_no)
         
 
 # creating object of training class and calling functions
 trn =  Training()
-trn.training_model('user43_train', 43)
-trn.model_testing('user43_test', 43)
+trn.training_model('user12_train', 12)
+trn.model_testing('user12_test', 12)
