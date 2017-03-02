@@ -145,7 +145,7 @@ class Training():
         #print(get_scorer(loss))   
         actual_df= pd.DataFrame([1]*300)     
         clf = svm.OneClassSVM(nu = self.nu, kernel = self.kernel ,gamma = self.gamma )
-        parameters = {'nu': np.arange(0.0001,0.01, 0.0002),'gamma': np.arange(0.0001,0.01, 0.0002)}
+        parameters = {'kernel' :['rbf','linear','poly'],'nu': np.arange(0.0001,0.01, 0.0002),'gamma': np.arange(0.0001,0.01, 0.0002), 'degree' :np.arange(10), }
         print("building the model")
         grid = GridSearchCV(clf, parameters, cv = 4, scoring = loss)
         model_svm2 = grid.fit(all_data_frames , actual_df)
