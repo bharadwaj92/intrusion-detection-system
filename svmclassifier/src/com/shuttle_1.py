@@ -66,7 +66,7 @@ model_svm=svm.SVC()
 #loss  = make_scorer(scorer, greater_is_better=False)
 #grid = RandomizedSearchCV(clf, parameters, cv = 10, scoring = loss)
 #model_shuttle = grid.fit( X_train,y_train)
-new_model = model_shuttle.best_estimator_
+#new_model = model_shuttle.best_estimator_
 model_shuttle = svc.fit(X_train,y_train)
 dump(model_shuttle,open('model.shuttle', 'wb')) 
 trained_model = load(open('model.shuttle', 'rb'))
