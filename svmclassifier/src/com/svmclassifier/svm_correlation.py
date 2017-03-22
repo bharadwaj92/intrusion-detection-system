@@ -122,7 +122,7 @@ class Training():
     def testing_metrics(self,t,user_no,trained_model, actual_df , df):
         predicted_df = trained_model.predict(df)
         predicted_df = [int(x) for x in predicted_df]
-        predicted_df = [1 if x== -1 else 0 for x in predicted_df ]
+        predicted_df = [0 if x== -1 else 1 for x in predicted_df ]
         tn, fp, fn, tp = confusion_matrix(actual_df, predicted_df).ravel()
         print(tn,fp,fn,tp)
         accuracy_rate = (tn + tp)/(tn+tp+fn+fp)
