@@ -23,7 +23,7 @@ class Training():
         self.block_size = 100
         self.probe_size = 6
         self.nu = 0.001
-        self.kernel = "poly"
+        self.kernel = "rbf"
         self.gamma = 0.0001
         self.database = self.create_database()
         self.n_components = 50
